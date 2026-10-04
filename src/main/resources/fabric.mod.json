@@ -8,7 +8,7 @@
     "ZCode"
   ],
   "contact": {},
-  "license": "MIT",
+  "license": "Unlicense",
   "environment": "client",
   "entrypoints": {
     "client": [

@@ -61,4 +61,4 @@ Requires Java 21. The jar lands in `build/libs/`.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+The Unlicense (public domain) — see [UNLICENSE](UNLICENSE).
