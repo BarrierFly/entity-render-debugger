@@ -1,0 +1,30 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "me.zcode.entity_render_debugger.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+  ],
+  "client": [
+    "EntityRenderManagerMixin",
+    "WorldRendererMixin",
+    "EntityGuiElementRendererMixin",
+    "InventoryScreenMixin",
+    "ItemPickupParticleRendererResultMixin",
+    "MobSpawnerBlockEntityRendererMixin",
+    "ParticleAccessor",
+    "BillboardParticleAccessor",
+    "BillboardParticleMixin",
+    "BillboardParticleRendererAccess",
+    "BillboardParticleRendererMixin",
+    "ParticleManagerMixin",
+    "ParticleRendererMixin",
+    "ParticleSpriteManagerSimpleSpriteProviderMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "overwrites": {
+    "requireAnnotations": true
+  }
+}

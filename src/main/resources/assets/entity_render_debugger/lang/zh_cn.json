@@ -1,0 +1,23 @@
+{
+  "entity_render_debugger.header": "已拦截一处渲染问题 —— ",
+  "entity_render_debugger.action.entity_missing_renderer": "该实体没有注册渲染器，已跳过渲染而不崩溃。",
+  "entity_render_debugger.action.entity_should_render": "可见性检查（EntityRenderManager#shouldRender）失败，本帧该实体按不可见处理。",
+  "entity_render_debugger.action.entity_render_state": "构建实体渲染状态失败，已用空白状态替代。",
+  "entity_render_debugger.action.entity_render": "渲染该实体失败，已跳过。",
+  "entity_render_debugger.action.particle_create": "已跳过该粒子的生成。",
+  "entity_render_debugger.action.particle_tick": "已跳过该粒子的本次 tick。",
+  "entity_render_debugger.action.particle_billboard_render": "已跳过渲染该粒子。",
+  "entity_render_debugger.action.particle_batch_render": "已跳过该渲染批次。",
+  "entity_render_debugger.action.particle_sprite_provider": "已回退为 missingno 贴图。",
+  "entity_render_debugger.action.particle_null_sprite": "已将空贴图替换为 missingno。",
+  "entity_render_debugger.suppressed": "（此前已省略 %s 次相同报告）",
+  "entity_render_debugger.entity": "实体: %s（类 %s）",
+  "entity_render_debugger.entity_of_type": "实体类型: %s（类 %s，来源: %s）",
+  "entity_render_debugger.particle": "粒子: %s",
+  "entity_render_debugger.position": "位置: %s",
+  "entity_render_debugger.route": "调用路线: %s",
+  "entity_render_debugger.sheet": "渲染批次: %s",
+  "entity_render_debugger.texture": "贴图: %s（图集 %s）",
+  "entity_render_debugger.error": "错误: %s〔鼠标悬停查看完整堆栈〕",
+  "entity_render_debugger.report": "详细报告: %s〔鼠标悬停查看摘要〕"
+}

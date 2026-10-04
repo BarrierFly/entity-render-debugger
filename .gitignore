@@ -1,0 +1,22 @@
+# gradle
+.gradle/
+build/
+out/
+classes/
+
+# idea
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# vscode / eclipse
+.vscode/
+.settings/
+.classpath
+.project
+bin/
+
+# fabric / run directory
+run/
+remappedSrc/

@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "id": "entity_render_debugger",
+  "version": "${version}",
+  "name": "Entity Render Debugger",
+  "description": "Merged entity-renderer-debugger + particle-render-monitor. Prevents client crashes from broken entity rendering (incl. every call of EntityRenderManager#shouldRender, method_3950) and broken particles, reports core info in chat and log, and writes a detailed root-cause report to disk.",
+  "authors": [
+    "ZCode"
+  ],
+  "contact": {},
+  "license": "MIT",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "me.zcode.entity_render_debugger.EntityRenderDebugger"
+    ]
+  },
+  "mixins": [
+    "entity_render_debugger.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.17.0",
+    "minecraft": ">=1.21.11 <1.22"
+  }
+}
