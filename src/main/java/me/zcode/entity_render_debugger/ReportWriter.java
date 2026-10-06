@@ -162,6 +162,17 @@ final class ReportWriter {
 						+ " (via EntityRenderManager#render). Vanilla wraps every failure of this path into CrashException"
 						+ " 'Rendering entity in world'. The debugger skipped the entity for this frame.");
 			}
+			case SKY_RENDER_STATE -> {
+				out.add("WorldRenderer#render calls this.skyRendering.updateRenderState(world, tickDelta, camera, skyRenderState)"
+						+ " without a null check, but the SkyRendering instance is only created inside WorldRenderer#reload -"
+						+ " not in the WorldRenderer constructor. A frame rendered before reload() has finished"
+						+ " (joining a world during a resource reload, a failed/slow reload, or a mod interfering with the"
+						+ " reload cycle) therefore crashes with: NullPointerException: Cannot invoke"
+						+ " \"net.minecraft.class_9975.method_74926(...)\" because \"this.field_53075\" is null.");
+				out.add("This is a vanilla 1.21.9+ issue (widely reported on 1.21.11). The debugger skipped the sky state"
+						+ " update for this frame; the sky render pass itself is null-guarded by vanilla (WorldRenderer#renderSky"
+						+ " returns early when the field is still null) and simply does not draw until the reload completes.");
+			}
 			case PARTICLE_CREATE -> out.add("A particle factory threw while creating a particle"
 					+ " (ParticleManager#createParticle -> ParticleFactory#createParticle). Vanilla crashes with"
 					+ " 'Unable to create particle'; the debugger skipped the particle instead.");

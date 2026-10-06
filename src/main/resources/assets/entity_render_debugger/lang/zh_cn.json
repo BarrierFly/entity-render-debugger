@@ -4,6 +4,7 @@
   "entity_render_debugger.action.entity_should_render": "可见性检查（EntityRenderManager#shouldRender）失败，本帧该实体按不可见处理。",
   "entity_render_debugger.action.entity_render_state": "构建实体渲染状态失败，已用空白状态替代。",
   "entity_render_debugger.action.entity_render": "渲染该实体失败，已跳过。",
+  "entity_render_debugger.action.sky_render_state": "天空渲染器尚未初始化（原版重载竞态），已跳过本帧的天空状态更新。",
   "entity_render_debugger.action.particle_create": "已跳过该粒子的生成。",
   "entity_render_debugger.action.particle_tick": "已跳过该粒子的本次 tick。",
   "entity_render_debugger.action.particle_billboard_render": "已跳过渲染该粒子。",

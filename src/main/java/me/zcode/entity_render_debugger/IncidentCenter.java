@@ -182,6 +182,25 @@ public final class IncidentCenter {
 		}
 	}
 
+	/**
+	 * {@code WorldRenderer#render} called {@code SkyRendering#updateRenderState} on a null
+	 * {@code skyRendering} field (vanilla 1.21.9+ reload race) or the call threw.
+	 */
+	public static void onSkyUpdateFailure(@Nullable Throwable error) {
+		try {
+			Incident i = new Incident(Site.SKY_RENDER_STATE);
+			i.subjectClass = "net.minecraft.client.render.SkyRendering";
+			i.errorKey = error != null ? error.getClass().getName() : "null-sky-renderer";
+			i.error = error;
+			i.details.put("Sky renderer field", error == null
+					? "null (WorldRenderer#reload has not created the SkyRendering instance yet)"
+					: "initialized (the call itself threw)");
+			emit(i);
+		} catch (Throwable t) {
+			EntityRenderDebugger.LOGGER.error("[ERD] failed to report sky update failure", t);
+		}
+	}
+
 	// ---------------------------------------------- particle hooks (from mixins)
 
 	/** Records the particle type id so later failures can be reported with it. */
@@ -370,6 +389,7 @@ public final class IncidentCenter {
 			case PARTICLE_SPRITE_PROVIDER -> "sprite set missing / not loaded";
 			case PARTICLE_NULL_SPRITE -> "sprite == null (replaced with missingno)";
 			case ENTITY_MISSING_RENDERER -> "no EntityRenderer registered for this entity type";
+			case SKY_RENDER_STATE -> "skyRendering == null (WorldRenderer#reload not finished yet)";
 			default -> "no exception";
 		};
 	}

@@ -32,6 +32,13 @@ public enum Site {
 			return "EntityRenderManager#render -> " + subjectClass + "#render";
 		}
 	},
+	/** {@code WorldRenderer#render} calling into a not-yet-created/throwing {@code SkyRendering}. */
+	SKY_RENDER_STATE("sky_render_state") {
+		@Override
+		public String route(String subjectClass) {
+			return "WorldRenderer#render -> " + subjectClass + "#updateRenderState(ClientWorld, float, Camera, SkyRenderState)";
+		}
+	},
 	PARTICLE_CREATE("particle_create") {
 		@Override
 		public String route(String subjectClass) {
