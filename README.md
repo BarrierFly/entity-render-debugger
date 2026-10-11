@@ -16,6 +16,12 @@ Instead of closing the client, every interception point below turns the failure 
 - **`EntityRenderManager#getAndUpdateRenderState`** — vanilla wraps every failure into
   `CrashException "Extracting render state for an entity in world"`; the debugger substitutes a
   blank render state (all consumers of the blank state are guarded as well).
+- **`EntityRenderManager#getLight` (`method_23839`)** — vanilla does
+  `getRenderer(entity).getLight(...)` with no null check, and `GameRenderer#renderHand` calls it
+  with the **local player** every frame, so a missing player renderer (startup/reload race) NPEs
+  the whole frame there. The guard reports the incident and returns light 0 instead; every other
+  `getLight` caller is covered too. The leash-holder lookups inside `EntityRenderer#shouldRender`
+  and `#updateRenderState` are covered by the guards on those two methods.
 - **`EntityRenderManager#render`** call sites (`WorldRenderer#pushEntityRenders`,
   GUI entity elements, item pickup particles, mob/trial spawner displays) — vanilla wraps every
   failure into `CrashException "Rendering entity in world"`; the failing entity is skipped instead.

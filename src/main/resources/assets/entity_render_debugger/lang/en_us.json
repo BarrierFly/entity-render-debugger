@@ -3,6 +3,7 @@
   "entity_render_debugger.action.entity_missing_renderer": "no renderer is registered for this entity, it was skipped instead of crashing.",
   "entity_render_debugger.action.entity_should_render": "the visibility check (EntityRenderManager#shouldRender) failed, the entity is treated as invisible this frame.",
   "entity_render_debugger.action.entity_render_state": "building the entity's render state failed, a blank state was substituted.",
+  "entity_render_debugger.action.entity_get_light": "fetching the entity's light failed, the frame continues with light 0.",
   "entity_render_debugger.action.entity_render": "rendering this entity failed, it was skipped.",
   "entity_render_debugger.action.sky_render_state": "the sky renderer was not initialized yet (vanilla reload race), the sky state update was skipped for this frame.",
   "entity_render_debugger.action.particle_create": "skipped creating this particle.",

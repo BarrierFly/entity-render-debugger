@@ -50,6 +50,9 @@ public final class IncidentCenter {
 			"WorldRenderer#fillEntityRenderStates -> EntityRenderManager#shouldRender (method_3950) -> EntityRenderer#shouldRender";
 	public static final String ROUTE_RENDER_STATE =
 			"EntityRenderManager#getAndUpdateRenderState -> EntityRenderer#getAndUpdateRenderState -> EntityRenderer#updateRenderState";
+	/** {@code GameRenderer#renderHand} asks for the local player's packed light every frame (method_23839). */
+	public static final String ROUTE_GET_LIGHT =
+			"GameRenderer#renderHand -> EntityRenderManager#getLight (method_23839) -> EntityRenderer#getLight";
 	public static final String ROUTE_ENTITY_RENDER =
 			"EntityRenderManager#render -> EntityRenderer#render";
 

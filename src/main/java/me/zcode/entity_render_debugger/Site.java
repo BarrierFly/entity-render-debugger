@@ -26,6 +26,14 @@ public enum Site {
 					+ "#getAndUpdateRenderState -> " + subjectClass + "#updateRenderState";
 		}
 	},
+	/** {@code net.minecraft.class_898.method_23839} — EntityRenderManager#getLight. */
+	ENTITY_GET_LIGHT("entity_get_light") {
+		@Override
+		public String route(String subjectClass) {
+			return "GameRenderer#renderHand -> EntityRenderManager#getLight (method_23839) -> "
+					+ subjectClass + "#getLight";
+		}
+	},
 	ENTITY_RENDER("entity_render") {
 		@Override
 		public String route(String subjectClass) {

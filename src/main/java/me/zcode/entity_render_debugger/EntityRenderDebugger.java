@@ -10,7 +10,8 @@ import org.slf4j.LoggerFactory;
  * reporting by Fallen_Breath) and particle-render-monitor (particle failure interception).
  *
  * <p>Prevents client crashes caused by broken entity rendering — including every call of
- * {@code net.minecraft.class_898.method_3950} (EntityRenderManager#shouldRender) — and by
+ * {@code net.minecraft.class_898.method_3950} (EntityRenderManager#shouldRender) and
+ * {@code method_23839} (EntityRenderManager#getLight, used by GameRenderer#renderHand) — and by
  * broken particle creation/ticking/rendering. Core info goes to the client chat and the log,
  * and a detailed root-cause report is written to {@code <game dir>/entity_render_debugger/reports/}.
  */
