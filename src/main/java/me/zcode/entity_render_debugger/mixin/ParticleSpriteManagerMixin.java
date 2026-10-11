@@ -54,7 +54,7 @@ public abstract class ParticleSpriteManagerMixin {
 
 	@Inject(method = "method_74298", at = @At("TAIL"))
 	private void erd$auditSpriteReload(CompletableFuture<?> stitchFuture, CompletableFuture<?> definitionsFuture,
-			Void unused) {
+			Void unused, CallbackInfo ci) {
 		try {
 			// the apply stage joins both futures before binding, so join() here never blocks
 			if (!(stitchFuture.join() instanceof SpriteLoader.StitchResult stitchResult)) {
