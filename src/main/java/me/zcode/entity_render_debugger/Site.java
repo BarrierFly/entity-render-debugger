@@ -40,6 +40,22 @@ public enum Site {
 			return "EntityRenderManager#render -> " + subjectClass + "#render";
 		}
 	},
+	/** An {@code EntityRendererFactory} threw while the reload was building the renderer maps. */
+	ENTITY_RENDERER_REGISTRATION("entity_renderer_registration") {
+		@Override
+		public String route(String subjectClass) {
+			return "EntityRenderManager#reload -> EntityRendererFactories#reloadEntityRenderers -> "
+					+ subjectClass + "#create";
+		}
+	},
+	/** Post-reload audit: entity types that ended up without a renderer. */
+	ENTITY_RENDERER_AUDIT("entity_renderer_audit") {
+		@Override
+		public String route(String subjectClass) {
+			return "EntityRenderManager#reload -> EntityRendererFactories#reloadEntityRenderers -> audit"
+					+ " Registries.ENTITY_TYPE vs freshly built renderer map";
+		}
+	},
 	/** {@code WorldRenderer#render} calling into a not-yet-created/throwing {@code SkyRendering}. */
 	SKY_RENDER_STATE("sky_render_state") {
 		@Override
@@ -84,6 +100,13 @@ public enum Site {
 		@Override
 		public String route(String subjectClass) {
 			return subjectClass + " sprite == null -> fallback to minecraft:missingno";
+		}
+	},
+	/** Post-reload audit of the particle sprite resources (textures, definitions, factories). */
+	PARTICLE_SPRITES_RELOAD("particle_sprites_reload") {
+		@Override
+		public String route(String subjectClass) {
+			return "ParticleSpriteManager#reload (apply/bind stage) -> particle sprite resource audit";
 		}
 	};
 

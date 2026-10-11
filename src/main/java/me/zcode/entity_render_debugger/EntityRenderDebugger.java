@@ -12,8 +12,11 @@ import org.slf4j.LoggerFactory;
  * <p>Prevents client crashes caused by broken entity rendering — including every call of
  * {@code net.minecraft.class_898.method_3950} (EntityRenderManager#shouldRender) and
  * {@code method_23839} (EntityRenderManager#getLight, used by GameRenderer#renderHand) — and by
- * broken particle creation/ticking/rendering. Core info goes to the client chat and the log,
- * and a detailed root-cause report is written to {@code <game dir>/entity_render_debugger/reports/}.
+ * broken particle creation/ticking/rendering. At the end of every resource reload it also audits
+ * the monitored resources (entity renderer factories, particle sprite sets, particle factories)
+ * and reports anything missing with full attribution. Core info goes to the client chat and the
+ * log, and a detailed root-cause report is written to
+ * {@code <game dir>/entity_render_debugger/reports/}.
  */
 public class EntityRenderDebugger implements ClientModInitializer {
 	public static final String MOD_ID = "entity_render_debugger";

@@ -162,6 +162,39 @@ final class ReportWriter {
 						+ " (via EntityRenderManager#render). Vanilla wraps every failure of this path into CrashException"
 						+ " 'Rendering entity in world'. The debugger skipped the entity for this frame.");
 			}
+			case ENTITY_RENDERER_REGISTRATION -> {
+				out.add("Building the renderer for entity type '" + i.details.getOrDefault("Entity type", "?")
+						+ "' via factory " + i.subjectClass + " threw while the resource reload rebuilt the renderer"
+						+ " maps (EntityRendererFactories#reloadEntityRenderers / #reloadPlayerRenderers).");
+				out.add("Vanilla wraps this into IllegalArgumentException 'Failed to create model for <type>' which fails"
+						+ " the whole resource reload and closes the game. The debugger skipped only this renderer and"
+						+ " let the reload finish; instances of the type are handled by the runtime guards (invisible,"
+						+ " light 0) instead of crashing.");
+				out.add("Likely causes: the owning mod's renderer is incompatible with this Minecraft/modpack version"
+						+ " (outdated update, binary incompatibility, missing client dependency) or its model/textures"
+						+ " initialization is broken - the trace and the attribution below identify the mod.");
+			}
+			case ENTITY_RENDERER_AUDIT -> {
+				out.add("Post-reload audit: the freshly rebuilt renderer map does not cover every entity type in the"
+						+ " registry (the per-type list with owner mods is in the subject section above).");
+				out.add("Types 'without factory': the owner mod never registered a client renderer"
+						+ " (EntityRendererFactories.register or its client entrypoint is missing/broken) - the first"
+						+ " rendered instance would NPE in vanilla; the debugger guards handle it instead.");
+				out.add("Types 'with failed factory': the factory threw while building - each of them also has its own"
+						+ " entity_renderer_registration report containing the full stack trace.");
+			}
+			case PARTICLE_SPRITES_RELOAD -> {
+				out.add("Post-reload audit of the particle sprite resources; the exact finding is in the subject section"
+						+ " above. Possible findings: (a) textures referenced by a particles/<id>.json texture list are"
+						+ " missing from the freshly stitched particle atlas; (b) a texture list json parsed to an empty"
+						+ " list; (c) sprite sets requested by factories with no particles/<id>.json in any resource"
+						+ " pack; (d) modded particle types without a client factory.");
+				out.add("Vanilla logs at most one 'Missing particle sprites: ...' warning for (a) and nothing for (b)-(d);"
+						+ " unloaded providers would NPE on the first particle spawn (guarded by this mod at runtime),"
+						+ " and missing factories make the particle type silently render nothing.");
+				out.add("Likely causes: a broken/outdated resource pack or mod removed or renamed texture files or"
+						+ " particle jsons, or the owning mod forgot its client particle registration.");
+			}
 			case SKY_RENDER_STATE -> {
 				out.add("WorldRenderer#render calls this.skyRendering.updateRenderState(world, tickDelta, camera, skyRenderState)"
 						+ " without a null check, but the SkyRendering instance is only created inside WorldRenderer#reload -"

@@ -10,6 +10,7 @@ import net.minecraft.client.particle.Particle;
 import net.minecraft.client.particle.ParticleRenderer;
 import net.minecraft.client.particle.ParticleTextureSheet;
 import net.minecraft.client.render.Submittable;
+import net.minecraft.client.render.entity.EntityRendererFactory;
 import net.minecraft.client.render.entity.state.EntityRenderState;
 import net.minecraft.client.texture.AtlasManager;
 import net.minecraft.client.texture.Sprite;
@@ -18,6 +19,7 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.particle.ParticleEffect;
+import net.minecraft.particle.ParticleType;
 import net.minecraft.registry.Registries;
 import net.minecraft.storage.NbtWriteView;
 import net.minecraft.text.HoverEvent;
@@ -31,8 +33,10 @@ import net.minecraft.util.Identifier;
 import net.minecraft.util.math.Vec3d;
 import org.jspecify.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
 
@@ -71,7 +75,7 @@ public final class IncidentCenter {
 	 */
 	private static final EntityRenderState BLANK_RENDER_STATE = new EntityRenderState();
 
-	private static @Nullable Sprite cachedMissingSprite;
+	private static volatile @Nullable Sprite cachedMissingSprite;
 	private static DebugConfig config = new DebugConfig();
 
 	private IncidentCenter() {}
@@ -108,6 +112,14 @@ public final class IncidentCenter {
 			EntityRenderDebugger.LOGGER.debug("[ERD] missing sprite not available yet", t);
 			return null;
 		}
+	}
+
+	/**
+	 * Replaces the cached missingno sprite with the instance of a freshly stitched atlas — the
+	 * resource-reload audits call this because the cached sprite is invalidated by every reload.
+	 */
+	public static void refreshMissingSprite(@Nullable Sprite freshMissingSprite) {
+		cachedMissingSprite = freshMissingSprite;
 	}
 
 	public static Submittable emptySubmittable() {
@@ -201,6 +213,154 @@ public final class IncidentCenter {
 			emit(i);
 		} catch (Throwable t) {
 			EntityRenderDebugger.LOGGER.error("[ERD] failed to report sky update failure", t);
+		}
+	}
+
+	// ---------------------------------------------- resource reload audits (mixins)
+
+	/**
+	 * An {@link EntityRendererFactory} threw (or returned null) while the resource reload was
+	 * rebuilding the renderer maps. Vanilla wraps this into {@code IllegalArgumentException
+	 * "Failed to create model for <type>"} which fails the whole reload; the debugger skips only
+	 * this renderer instead (its instances are handled by the runtime guards).
+	 */
+	public static void onRendererRegistrationFailure(EntityType<?> entityType, EntityRendererFactory<?> factory,
+			Throwable error) {
+		try {
+			Incident i = new Incident(Site.ENTITY_RENDERER_REGISTRATION);
+			i.subjectClass = factory.getClass().getName();
+			i.errorKey = error.getClass().getName();
+			i.error = error;
+			collectEntityTypeDetails(i, entityType);
+			i.details.put("Factory class", factory.getClass().getName());
+			i.details.put("Consequence", "the reload continues without this renderer; instances of the type are"
+					+ " treated as invisible by the runtime guards instead of crashing");
+			emit(i);
+		} catch (Throwable t) {
+			EntityRenderDebugger.LOGGER.error("[ERD] failed to report renderer registration failure for {}", entityType, t);
+		}
+	}
+
+	/**
+	 * Post-reload audit: entity types that the freshly built renderer map does not cover, split
+	 * into "no factory registered at all" and "factory present but its creation failed" (the
+	 * latter also have their own {@code entity_renderer_registration} report with the trace).
+	 */
+	public static void onReloadRendererAudit(List<EntityType<?>> withoutFactory, List<EntityType<?>> withFailedFactory,
+			int totalTypes) {
+		try {
+			Incident i = new Incident(Site.ENTITY_RENDERER_AUDIT);
+			i.subjectClass = "resource-reload-audit";
+			i.errorKey = "missing-renderer";
+			i.details.put("Entity types in registry", String.valueOf(totalTypes));
+			i.details.put("Types without renderer", String.valueOf(withoutFactory.size() + withFailedFactory.size()));
+			appendEntityTypeList(i, "Type without factory", withoutFactory);
+			appendEntityTypeList(i, "Type with failed factory", withFailedFactory);
+			i.details.put("Consequence", "instances of these types are treated as invisible by the runtime guards"
+					+ " instead of crashing");
+			i.details.put("Summary", summarizeEntityTypes(withoutFactory, withFailedFactory));
+			emit(i);
+		} catch (Throwable t) {
+			EntityRenderDebugger.LOGGER.error("[ERD] failed to report the entity renderer reload audit", t);
+		}
+	}
+
+	/** The player/mannequin avatar renderers (SLIM/WIDE) could not be built during the reload. */
+	public static void onAvatarRenderersReloadFailure(Throwable error) {
+		try {
+			Incident i = new Incident(Site.ENTITY_RENDERER_REGISTRATION);
+			i.subjectClass = "player-avatar-renderers";
+			i.errorKey = error.getClass().getName();
+			i.error = error;
+			i.details.put("Renderer kind", "player avatar renderers (PlayerSkinType SLIM/WIDE)");
+			i.details.put("Consequence", "players and mannequins have no renderer; the runtime guards render them as"
+					+ " invisible with light 0 instead of crashing");
+			emit(i);
+		} catch (Throwable t) {
+			EntityRenderDebugger.LOGGER.error("[ERD] failed to report the avatar renderer reload failure", t);
+		}
+	}
+
+	/**
+	 * A particle sprite set bound during the reload referenced textures that are not in the
+	 * freshly stitched particle atlas. Vanilla substitutes the missingno sprite and logs one
+	 * summary line; this reports each affected set with its owner and the missing texture ids.
+	 */
+	public static void onReloadSpriteSetTexturesMissing(Identifier setId, List<Identifier> missingSpriteIds,
+			int referencedCount) {
+		try {
+			Incident i = new Incident(Site.PARTICLE_SPRITES_RELOAD);
+			i.subjectClass = setId.toString();
+			i.errorKey = "missing-sprite-textures";
+			i.details.put("Sprite set", setId + " (assets/" + setId.getNamespace() + "/particles/" + setId.getPath()
+					+ ".json)");
+			i.details.put("Owner mod", describeOwnerMod(setId));
+			i.details.put("Textures referenced", String.valueOf(referencedCount));
+			appendIdentifierList(i, "Missing texture", missingSpriteIds);
+			i.details.put("Consequence", "the missing textures are substituted with the atlas missingno sprite"
+					+ " (vanilla behaviour), so particles using this set render with the missing texture");
+			i.details.put("Summary", summarizeIdentifiers("sprite set " + setId, missingSpriteIds.size()
+					+ " of " + referencedCount + " textures missing", missingSpriteIds));
+			emit(i);
+		} catch (Throwable t) {
+			EntityRenderDebugger.LOGGER.error("[ERD] failed to report missing particle sprites for set {}", setId, t);
+		}
+	}
+
+	/** A particle sprite set's texture list json parsed to an empty list. */
+	public static void onReloadSpriteSetEmpty(Identifier setId) {
+		try {
+			Incident i = new Incident(Site.PARTICLE_SPRITES_RELOAD);
+			i.subjectClass = setId.toString();
+			i.errorKey = "empty-texture-list";
+			i.details.put("Sprite set", setId + " (assets/" + setId.getNamespace() + "/particles/" + setId.getPath()
+					+ ".json)");
+			i.details.put("Owner mod", describeOwnerMod(setId));
+			i.details.put("Consequence", "the set was bound with only the missingno sprite, particles using it render"
+					+ " with the missing texture");
+			i.details.put("Summary", "sprite set " + setId + " has an empty texture list");
+			emit(i);
+		} catch (Throwable t) {
+			EntityRenderDebugger.LOGGER.error("[ERD] failed to report the empty particle sprite set {}", setId, t);
+		}
+	}
+
+	/**
+	 * Sprite sets that factories requested but for which no {@code particles/<id>.json} exists in
+	 * any resource pack: their providers stay unloaded (vanilla NPEs on first use, which the
+	 * runtime guard catches per particle).
+	 */
+	public static void onReloadUnboundSpriteSets(List<Identifier> setIds) {
+		try {
+			Incident i = new Incident(Site.PARTICLE_SPRITES_RELOAD);
+			i.subjectClass = "sprite-sets-without-definition";
+			i.errorKey = "missing-definition";
+			i.details.put("Sets without definition", String.valueOf(setIds.size()));
+			appendIdentifierList(i, "Set without definition", setIds);
+			i.details.put("Consequence", "the providers stay unloaded; every factory use falls back to the runtime"
+					+ " missingno guard instead of crashing");
+			i.details.put("Summary", summarizeIdentifiers(setIds.size() + " particle sprite set(s) have no"
+					+ " particles/<id>.json", "expected by registered factories", setIds));
+			emit(i);
+		} catch (Throwable t) {
+			EntityRenderDebugger.LOGGER.error("[ERD] failed to report the unbound particle sprite sets", t);
+		}
+	}
+
+	/** Modded particle types without a client factory after the reload (they silently render nothing). */
+	public static void onReloadMissingParticleFactories(List<Identifier> typeIds) {
+		try {
+			Incident i = new Incident(Site.PARTICLE_SPRITES_RELOAD);
+			i.subjectClass = "particle-types-without-factory";
+			i.errorKey = "missing-factory";
+			i.details.put("Types without factory", String.valueOf(typeIds.size()));
+			appendIdentifierList(i, "Type without factory", typeIds);
+			i.details.put("Consequence", "createParticle returns null for them, so they are never rendered");
+			i.details.put("Summary", summarizeIdentifiers(typeIds.size() + " modded particle type(s) have no client"
+					+ " factory", "", typeIds));
+			emit(i);
+		} catch (Throwable t) {
+			EntityRenderDebugger.LOGGER.error("[ERD] failed to report the missing particle factories", t);
 		}
 	}
 
@@ -356,6 +516,11 @@ public final class IncidentCenter {
 			text.append("\n").append(Text.translatable("entity_render_debugger.position", position).formatted(Formatting.GRAY));
 		}
 
+		@Nullable String summaryLine = i.details.get("Summary");
+		if (summaryLine != null) {
+			text.append("\n").append(Text.literal(summaryLine).formatted(Formatting.GRAY));
+		}
+
 		@Nullable String particle = i.details.get("Particle");
 		if (particle != null) {
 			text.append("\n").append(Text.translatable("entity_render_debugger.particle", particle).formatted(Formatting.GRAY));
@@ -393,6 +558,9 @@ public final class IncidentCenter {
 			case PARTICLE_NULL_SPRITE -> "sprite == null (replaced with missingno)";
 			case ENTITY_MISSING_RENDERER -> "no EntityRenderer registered for this entity type";
 			case SKY_RENDER_STATE -> "skyRendering == null (WorldRenderer#reload not finished yet)";
+			case ENTITY_RENDERER_REGISTRATION -> "the renderer factory threw while the reload rebuilt the renderer maps";
+			case ENTITY_RENDERER_AUDIT -> "entity types without renderer detected by the post-reload audit";
+			case PARTICLE_SPRITES_RELOAD -> "missing particle sprite resources detected by the post-reload audit";
 			default -> "no exception";
 		};
 	}
@@ -418,6 +586,86 @@ public final class IncidentCenter {
 	}
 
 	// ------------------------------------------------------------ collectors
+
+	/** {@return a "<name> (<namespace>)" description of the mod owning the id's namespace} */
+	private static String describeOwnerMod(Identifier id) {
+		String namespace = id.getNamespace();
+		return FabricLoader.getInstance().getModContainer(namespace)
+				.map(container -> container.getMetadata().getName() + " (" + namespace + ")")
+				.orElse("unknown mod (" + namespace + ")");
+	}
+
+	private static void appendEntityTypeList(Incident i, String key, List<EntityType<?>> types) {
+		int shown = Math.min(types.size(), 30);
+		for (int idx = 0; idx < shown; idx++) {
+			i.details.put(key + " " + (idx + 1), describeEntityType(types.get(idx)));
+		}
+		if (types.size() > shown) {
+			i.details.put(key + " ...", (types.size() - shown) + " more");
+		}
+	}
+
+	private static String describeEntityType(EntityType<?> type) {
+		try {
+			Identifier id = EntityType.getId(type);
+			return id + " (class " + type.getBaseClass().getName() + ", owner " + describeOwnerMod(id) + ")";
+		} catch (Throwable t) {
+			return "<failed to describe: " + t + ">";
+		}
+	}
+
+	private static String summarizeEntityTypes(List<EntityType<?>> withoutFactory, List<EntityType<?>> withFailedFactory) {
+		List<Identifier> ids = new ArrayList<>();
+		for (EntityType<?> type : withoutFactory) {
+			ids.add(entityTypeId(type));
+		}
+		for (EntityType<?> type : withFailedFactory) {
+			ids.add(entityTypeId(type));
+		}
+		int total = withoutFactory.size() + withFailedFactory.size();
+		String detail = withoutFactory.isEmpty()
+				? "all from failed factories"
+				: withFailedFactory.isEmpty()
+						? "all without factory"
+						: (withoutFactory.size() + " without factory, " + withFailedFactory.size() + " with failed factory");
+		return summarizeIdentifiers(total + " entity type(s) without renderer (" + detail + ")", "", ids);
+	}
+
+	private static Identifier entityTypeId(EntityType<?> type) {
+		try {
+			return EntityType.getId(type);
+		} catch (Throwable t) {
+			return Identifier.of("?", "unknown");
+		}
+	}
+
+	private static void appendIdentifierList(Incident i, String key, List<Identifier> ids) {
+		int shown = Math.min(ids.size(), 30);
+		for (int idx = 0; idx < shown; idx++) {
+			Identifier id = ids.get(idx);
+			i.details.put(key + " " + (idx + 1), id + " (owner " + describeOwnerMod(id) + ")");
+		}
+		if (ids.size() > shown) {
+			i.details.put(key + " ...", (ids.size() - shown) + " more");
+		}
+	}
+
+	private static String summarizeIdentifiers(String headline, String suffix, List<Identifier> ids) {
+		StringBuilder sb = new StringBuilder(headline);
+		if (!suffix.isEmpty()) {
+			sb.append(" — ").append(suffix).append(':');
+		} else {
+			sb.append(':');
+		}
+		int shown = Math.min(ids.size(), 5);
+		for (int idx = 0; idx < shown; idx++) {
+			sb.append(idx == 0 ? " " : ", ").append(ids.get(idx));
+		}
+		if (ids.size() > shown) {
+			sb.append(", ... (+").append(ids.size() - shown).append(")");
+		}
+		return sb.toString();
+	}
 
 	private static void collectEntityDetails(Incident i, Entity entity) {
 		collectEntityTypeDetails(i, entity.getType());

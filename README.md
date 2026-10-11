@@ -29,6 +29,29 @@ Instead of closing the client, every interception point below turns the failure 
   monitored; reports entity type, owner mod, entity classes, display name, UUID, network id,
   dimension, position and full NBT.
 
+### Resource reload audits (`EntityRenderManager#reload` / `ParticleSpriteManager#reload`)
+At the end of every resource (re)load the debugger audits the resources it monitors and logs a
+detailed chat/log/report entry for anything missing:
+
+- **Entity renderer rebuild is guarded** (`EntityRendererFactories#reloadEntityRenderers` /
+  `#reloadPlayerRenderers`): vanilla invokes every registered factory in one pass and wraps any
+  failure into `IllegalArgumentException "Failed to create model for <type>"` /
+  `"Failed to create avatar models"`, failing the whole reload. The debugger runs each factory in
+  its own try/catch: a failing factory (or one returning null) is reported with the entity type,
+  owner mod, factory class and full stack trace, and the reload continues without it.
+- **Entity renderer audit**: after the rebuild, the entity type registry is compared against the
+  fresh renderer map; every uncovered type is reported with its id, entity base class and owner
+  mod, split into "no factory registered" vs "factory failed (see the registration report)".
+  Players/mannequins are excluded (they use the avatar renderer maps, whose failure is reported
+  separately).
+- **Particle sprite audit** (`ParticleSpriteManager`, apply/bind stage): reports particle sprite
+  sets that reference textures missing from the freshly stitched particle atlas (per set, with
+  the missing texture ids and their owner mods — vanilla only logs one summary line), texture
+  list jsons that parsed to an empty list, sprite sets requested by factories but with no
+  `particles/<id>.json` in any resource pack, and modded particle types without a client factory.
+- **Missingno cache refresh**: the debugger's cached atlas missing sprite is replaced with the
+  instance of the freshly stitched atlas on every reload.
+
 ### Particles (from particle-render-monitor)
 - Failing particle **factories** (`createParticle`), **ticks** (`tickParticle`) and
   **renders** (billboard + whole sheet batches) skip the offending particle/batch instead of
