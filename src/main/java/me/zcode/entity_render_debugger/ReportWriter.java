@@ -206,6 +206,14 @@ final class ReportWriter {
 						+ " update for this frame; the sky render pass itself is null-guarded by vanilla (WorldRenderer#renderSky"
 						+ " returns early when the field is still null) and simply does not draw until the reload completes.");
 			}
+			case ATLAS_STITCH_FALLBACK -> {
+				out.add("The particle atlas (minecraft:particles) failed to stitch during the resource reload.");
+				out.add("Vanilla behaviour: SpriteLoader#stitch wraps TextureStitcherCannotFitException into CrashException"
+						+ " 'Stitching', the whole reload future fails, and the client either purges all resource packs and"
+						+ " reloads or crashes outright - one oversized particle texture is enough to take the game down.");
+				out.add("The debugger substituted a missingno-only fallback atlas so the reload finished; particles render"
+						+ " with the missing texture. Fix or remove the resource pack owning the offending sprite above.");
+			}
 			case PARTICLE_CREATE -> out.add("A particle factory threw while creating a particle"
 					+ " (ParticleManager#createParticle -> ParticleFactory#createParticle). Vanilla crashes with"
 					+ " 'Unable to create particle'; the debugger skipped the particle instead.");

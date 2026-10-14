@@ -39,6 +39,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Central hub of the debugger: every guarded call site funnels through here.
@@ -66,6 +68,9 @@ public final class IncidentCenter {
 
 	/** Returned to {@code ParticleManager#addToBatch} when a whole render batch fails. */
 	private static final Submittable EMPTY_SUBMITTABLE = (queue, cameraRenderState) -> {};
+
+	/** Extracts the offending sprite id from a {@code TextureStitcherCannotFitException} message. */
+	private static final Pattern UNABLE_TO_FIT = Pattern.compile("Unable to fit: (\\S+)");
 
 	/**
 	 * A blank {@link EntityRenderState} substituted whenever render-state extraction fails.
@@ -124,6 +129,11 @@ public final class IncidentCenter {
 
 	public static Submittable emptySubmittable() {
 		return EMPTY_SUBMITTABLE;
+	}
+
+	/** {@return whether a failed particle atlas stitch should be degraded to a fallback atlas} */
+	public static boolean isAtlasStitchFallbackEnabled() {
+		return config.atlasStitchFallback;
 	}
 
 	// ------------------------------------------------ entity hooks (from mixins)
@@ -213,6 +223,54 @@ public final class IncidentCenter {
 			emit(i);
 		} catch (Throwable t) {
 			EntityRenderDebugger.LOGGER.error("[ERD] failed to report sky update failure", t);
+		}
+	}
+
+	/**
+	 * The particle atlas failed to stitch during the resource reload (e.g. a texture that cannot
+	 * fit into the atlas). {@code AtlasManagerEntryMixin} substituted a missingno-only fallback
+	 * stitch result so the reload can finish; {@code fallbackFailure} is set when even the
+	 * fallback failed and the vanilla recovery path (resource pack purge / crash) applies instead.
+	 */
+	public static void onAtlasStitchFailure(Throwable error, @Nullable Throwable fallbackFailure) {
+		try {
+			Incident i = new Incident(Site.ATLAS_STITCH_FALLBACK);
+			i.subjectClass = "minecraft:particles";
+			Throwable root = error;
+			while (root.getCause() != null && root.getCause() != root) {
+				root = root.getCause();
+			}
+			i.errorKey = root.getClass().getSimpleName();
+			i.error = error;
+			i.details.put("Atlas", "minecraft:particles (textures/atlas/particles.png)");
+			i.details.put("Original error", String.valueOf(error));
+			String offender = null;
+			for (Throwable candidate = error; candidate != null && offender == null; candidate = candidate.getCause()) {
+				String message = candidate.getMessage();
+				if (message != null) {
+					Matcher matcher = UNABLE_TO_FIT.matcher(message);
+					if (matcher.find()) {
+						offender = matcher.group(1);
+					}
+				}
+			}
+			if (offender != null) {
+				i.details.put("Offending sprite", offender);
+				try {
+					i.details.put("Owner mod", describeOwnerMod(Identifier.of(offender)));
+				} catch (Throwable ignored) {
+					// the extracted string was not a valid identifier
+				}
+			}
+			i.details.put("Fallback", fallbackFailure == null
+					? "stitched a 16x16 missingno-only particle atlas (reload continues)"
+					: "fallback stitch failed too: " + fallbackFailure);
+			i.details.put("Consequence", fallbackFailure == null
+					? "every particle sprite set falls back to the missingno sprite until the resource packs are fixed"
+					: "the reload still fails and the vanilla recovery path (resource pack purge / crash) applies");
+			emit(i);
+		} catch (Throwable t) {
+			EntityRenderDebugger.LOGGER.error("[ERD] failed to report atlas stitch failure", t);
 		}
 	}
 
@@ -561,6 +619,7 @@ public final class IncidentCenter {
 			case ENTITY_RENDERER_REGISTRATION -> "the renderer factory threw while the reload rebuilt the renderer maps";
 			case ENTITY_RENDERER_AUDIT -> "entity types without renderer detected by the post-reload audit";
 			case PARTICLE_SPRITES_RELOAD -> "missing particle sprite resources detected by the post-reload audit";
+			case ATLAS_STITCH_FALLBACK -> "the particle atlas failed to stitch; a missingno-only fallback atlas was substituted";
 			default -> "no exception";
 		};
 	}

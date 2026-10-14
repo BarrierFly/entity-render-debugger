@@ -9,6 +9,8 @@
     "EntityRenderManagerMixin",
     "EntityRendererFactoriesMixin",
     "WorldRendererMixin",
+    "AtlasManagerEntryMixin",
+    "SpriteLoaderStitchInvoker",
     "EntityGuiElementRendererMixin",
     "InventoryScreenMixin",
     "ItemPickupParticleRendererResultMixin",

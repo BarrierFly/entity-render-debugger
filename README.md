@@ -51,6 +51,12 @@ detailed chat/log/report entry for anything missing:
   `particles/<id>.json` in any resource pack, and modded particle types without a client factory.
 - **Missingno cache refresh**: the debugger's cached atlas missing sprite is replaced with the
   instance of the freshly stitched atlas on every reload.
+- **Particle atlas stitch fallback** (`AtlasManager$Entry#load`, guarded by `AtlasManagerEntryMixin`):
+  a failing stitch of the particle atlas (`CrashException "Stitching"`, e.g. a sprite that cannot
+  fit into the atlas) no longer fails the whole reload. The debugger reports the incident
+  (offending sprite + owner mod) and substitutes a missingno-only fallback atlas, so the reload
+  finishes and particles render with the missing texture instead. Disable via
+  `atlasStitchFallback: false` to keep the vanilla recovery path (resource pack purge / crash).
 
 ### Particles (from particle-render-monitor)
 - Failing particle **factories** (`createParticle`), **ticks** (`tickParticle`) and
@@ -76,6 +82,7 @@ detailed chat/log/report entry for anything missing:
   "chatReports": true,
   "logStackTraces": true,
   "writeReports": true,
+  "atlasStitchFallback": true,
   "chatCooldownMs": 5000
 }
 ```

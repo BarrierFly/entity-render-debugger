@@ -17,6 +17,7 @@ public final class DebugConfig {
 	public boolean chatReports = true;
 	public boolean logStackTraces = true;
 	public boolean writeReports = true;
+	public boolean atlasStitchFallback = true;
 	public long chatCooldownMs = 5000L;
 
 	static DebugConfig load(Path path) {
@@ -50,6 +51,7 @@ public final class DebugConfig {
 	@Override
 	public String toString() {
 		return "Config{enabled=" + enabled + ", chatReports=" + chatReports + ", logStackTraces=" + logStackTraces
-				+ ", writeReports=" + writeReports + ", chatCooldownMs=" + chatCooldownMs + "}";
+				+ ", writeReports=" + writeReports + ", atlasStitchFallback=" + atlasStitchFallback
+				+ ", chatCooldownMs=" + chatCooldownMs + "}";
 	}
 }

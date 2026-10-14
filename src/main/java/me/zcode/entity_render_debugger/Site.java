@@ -63,6 +63,13 @@ public enum Site {
 			return "WorldRenderer#render -> " + subjectClass + "#updateRenderState(ClientWorld, float, Camera, SkyRenderState)";
 		}
 	},
+	/** The particle atlas failed to stitch during the reload; a missingno-only fallback atlas was substituted. */
+	ATLAS_STITCH_FALLBACK("atlas_stitch_fallback") {
+		@Override
+		public String route(String subjectClass) {
+			return "AtlasManager$Entry#load -> SpriteLoader#load -> SpriteLoader#stitch -> missingno-only fallback StitchResult";
+		}
+	},
 	PARTICLE_CREATE("particle_create") {
 		@Override
 		public String route(String subjectClass) {

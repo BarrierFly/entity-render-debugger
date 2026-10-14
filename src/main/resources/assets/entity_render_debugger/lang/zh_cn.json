@@ -9,6 +9,7 @@
   "entity_render_debugger.action.particle_sprites_reload": "资源重载完成后的审计：发现缺失的粒子贴图资源。",
   "entity_render_debugger.action.entity_render": "渲染该实体失败，已跳过。",
   "entity_render_debugger.action.sky_render_state": "天空渲染器尚未初始化（原版重载竞态），已跳过本帧的天空状态更新。",
+  "entity_render_debugger.action.atlas_stitch_fallback": "粒子图集拼接失败，已用仅含 missingno 的兜底图集替代（粒子以紫黑棋盘格渲染，重载继续完成）。",
   "entity_render_debugger.action.particle_create": "已跳过该粒子的生成。",
   "entity_render_debugger.action.particle_tick": "已跳过该粒子的本次 tick。",
   "entity_render_debugger.action.particle_billboard_render": "已跳过渲染该粒子。",
