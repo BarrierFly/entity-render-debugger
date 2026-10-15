@@ -8,6 +8,7 @@ import net.minecraft.client.particle.ParticleSpriteManager;
 import net.minecraft.client.texture.SpriteLoader;
 import net.minecraft.particle.ParticleType;
 import net.minecraft.registry.Registries;
+import net.minecraft.resource.Resource;
 import net.minecraft.util.Identifier;
 import org.jspecify.annotations.Nullable;
 import org.spongepowered.asm.mixin.Final;
@@ -16,6 +17,7 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.ArrayList;
@@ -42,6 +44,11 @@ import java.util.concurrent.CompletableFuture;
  *
  * <p>It also refreshes the debugger's cached atlas missingno sprite, which every reload
  * invalidates. The audits must never break the reload, so everything is wrapped in catch-alls.
+ *
+ * <p>Finally it guards the per-definition load ({@code ParticleSpriteManager#load}): vanilla
+ * rethrows a failed parse/IO of a single {@code particles/<id>.json} as an unchecked exception
+ * that aborts the whole resource reload. {@code erd$guardDefinitionLoad} catches it and downgrades
+ * the set to unbound so the reload can finish.
  */
 @Mixin(ParticleSpriteManager.class)
 public abstract class ParticleSpriteManagerMixin {
@@ -51,6 +58,31 @@ public abstract class ParticleSpriteManagerMixin {
 
 	@Shadow
 	public abstract Int2ObjectMap<ParticleFactory<?>> getParticleFactories();
+
+	/**
+	 * Guards the per-definition load of a single {@code particles/<id>.json} during the reload
+	 * (the definition future built in the reload method). Vanilla's
+	 * {@code ParticleSpriteManager#load} rethrows a failed parse/IO as an unchecked exception which
+	 * fails that definition future and therefore the whole resource reload. A broken file is
+	 * downgraded to "no usable definition" ({@code Optional.empty()}) and reported instead; the
+	 * set's provider then stays unloaded and the runtime missingno guards handle every factory use.
+	 */
+	@Redirect(
+			method = "method_74303",
+			at = @At(
+					value = "INVOKE",
+					target = "Lnet/minecraft/client/particle/ParticleSpriteManager;load(Lnet/minecraft/util/Identifier;Lnet/minecraft/resource/Resource;)Ljava/util/Optional;"
+			)
+	)
+	private static Optional<List<Identifier>> erd$guardDefinitionLoad(ParticleSpriteManager manager, Identifier id,
+			Resource resource) {
+		try {
+			return ((ParticleSpriteManagerDefinitionLoadInvoker) (Object) manager).erd$load(id, resource);
+		} catch (Throwable throwable) {
+			IncidentCenter.onReloadSpriteDefinitionFailure(id, resource, throwable);
+			return Optional.empty();
+		}
+	}
 
 	@Inject(method = "method_74298", at = @At("TAIL"))
 	private void erd$auditSpriteReload(CompletableFuture<?> stitchFuture, CompletableFuture<?> definitionsFuture,

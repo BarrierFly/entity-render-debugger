@@ -21,6 +21,7 @@ import net.minecraft.nbt.NbtCompound;
 import net.minecraft.particle.ParticleEffect;
 import net.minecraft.particle.ParticleType;
 import net.minecraft.registry.Registries;
+import net.minecraft.resource.Resource;
 import net.minecraft.storage.NbtWriteView;
 import net.minecraft.text.HoverEvent;
 import net.minecraft.text.MutableText;
@@ -380,6 +381,32 @@ public final class IncidentCenter {
 			emit(i);
 		} catch (Throwable t) {
 			EntityRenderDebugger.LOGGER.error("[ERD] failed to report the empty particle sprite set {}", setId, t);
+		}
+	}
+
+	/**
+	 * A {@code particles/<id>.json} definition failed to load or parse during the reload. Vanilla
+	 * rethrows this as an unchecked exception that fails the whole resource reload; the guarded
+	 * definition loader downgrades it to an unbound set instead, so the reload finishes and the
+	 * runtime missingno guards handle every factory use.
+	 */
+	public static void onReloadSpriteDefinitionFailure(Identifier setId, Resource resource, Throwable error) {
+		try {
+			Incident i = new Incident(Site.PARTICLE_SPRITES_RELOAD);
+			i.subjectClass = setId.toString();
+			i.errorKey = "definition-load-failure";
+			i.error = error;
+			i.details.put("Sprite set", setId + " (assets/" + setId.getNamespace() + "/particles/" + setId.getPath()
+					+ ".json)");
+			i.details.put("Owner mod", describeOwnerMod(setId));
+			i.details.put("Resource pack", resource.getPackId());
+			i.details.put("Consequence", "the texture list could not be loaded, so the set stays unbound; every"
+					+ " factory use falls back to the runtime missingno guard instead of crashing");
+			i.details.put("Summary", "particle sprite set " + setId + " failed to load from pack "
+					+ resource.getPackId());
+			emit(i);
+		} catch (Throwable t) {
+			EntityRenderDebugger.LOGGER.error("[ERD] failed to report particle definition load failure for {}", setId, t);
 		}
 	}
 
